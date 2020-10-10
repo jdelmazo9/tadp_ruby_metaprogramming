@@ -78,6 +78,26 @@ class Module
     end
   end
 
+  def proc_with_typed_condition(dicTypes, retType, error_message = "Condition is not verified")
+    proc do | list_args, list_val, *ret|
+
+      result = true
+
+      dicTypes.each do |key, value|
+        index_val = list_args.index(key)
+        if list_val[index_val].class != value
+          result = false
+        end
+      end
+
+      unless ret.nil?
+        result = false if ret[0].class != retType
+      end
+
+      raise ConditionError.new error_message unless result
+    end
+  end
+
   def proc_for_invariant(bloque, error_message = "Condition is not verified")
     proc do
       result = instance_eval(&bloque)
@@ -99,8 +119,12 @@ class Module
     @post = proc_with_block_condition(bloque, "No cumple la sabalera postcondicion")
   end
 
+  private def typed(dicTypes, retType)
+    @typed = proc_with_typed_condition(dicTypes, retType, "No cumple los sabaleros dicTypes")
+  end
 
-  private def redefine_method(contractMethod, pre, post, list_args)
+
+  private def redefine_method(contractMethod, pre, post, typed, list_args)
     self.define_method(contractMethod.method_name) do |*args, &block|
       @external_level_redefine_method = true if @external_level_redefine_method.nil?
       local_external_level_redefine_method = @external_level_redefine_method
@@ -122,6 +146,7 @@ class Module
         end
         # instance_eval(&post) unless post.nil?
         instance_exec list_args, args, ret, &post unless post.nil?
+        instance_exec list_args, args, ret, &typed unless typed.nil?
       end
       @external_level_redefine_method = local_external_level_redefine_method
       ret
@@ -137,7 +162,8 @@ class Module
 
     if local_external_level_method_added
       contractMethod = ContractMethod.new(self.instance_method(method_name), method_name)
-      self.send(:redefine_method, contractMethod,  @pre, @post, list_args)
+      self.send(:redefine_method, contractMethod,  @pre, @post, @typed, list_args)
+      @typed = nil
       @pre = nil
       @post = nil
     end
@@ -147,86 +173,63 @@ end
 
 
 
-# class Sabalero
+# class Misil
+#   attr_accessor :daño
 #
-#   attr_accessor :nombre, :vino_en_sangre, :amor_por_el_pulga, :cantidad_de_sabalamigos
-#
-#     before_and_after_each_call(
-#         # Bloque Before. Se ejecuta antes de cada mensaje
-#         proc {  },
-#         # Bloque After. Se ejecuta después de cada mensaje
-#         proc {  }
-#     )
-#
-#   invariant { amor_por_el_pulga >= 100 }
-#   invariant { vino_en_sangre > 10 && vino_en_sangre < 1500 }
-#
-#   def initialize(nombre, amor, vino)
-#     @nombre = nombre
-#     @vino_en_sangre = vino
-#     @amor_por_el_pulga = amor
-#     @cantidad_de_sabalamigos = 0
-#   end
-#
-#   pre {@vino_en_sangre < 1400}
-#   def otraCosa
-#     puts "yo hago otra cosa"
-#   end
-#
-#   post { @vino_en_sangre < 1400 }
-#   pre { amor_por_el_pulga > 0 }
-#   def convidar_de_la_jarra(otro)
-#     otro.vino_en_sangre += amor_por_el_pulga
-#     self.vino_en_sangre = 1300
-#     @cantidad_de_sabalamigos += 1
+#   def initialize
+#     @daño = 10
 #   end
 # end
 #
+# class FixNum
+#   attr_accessor :num
+#   def initialize(value)
+#     @num = value
+#   end
+# end
 #
-# saba = Sabalero.new("Saba",150, 20)
-# lero = Sabalero.new("Lero", 1300, 1400)
-#
-# saba.convidar_de_la_jarra(lero)
-#
-# # puts lero.nombre
-# # puts lero.vino_en_sangre
-# saba.otraCosa
+# # class Edificio
+# #
+# #   attr_accessor :vida
+# #
+# #   def initialize
+# #     @vida = 1000
+# #   end
+# #
+# #   def sufriDanio(n)
+# #     @vida -= n.num
+# #   end
+# # end
+# #
+# # class Tanque
+# #
+# #   attr_accessor :vida
+# #
+# #   def initialize
+# #     @vida = 100
+# #   end
+# #
+# #
+# #   typed({enemigo: Edificio, proyectil: Misil}, FixNum)
+# #   def atacarEdificio(enemigo, proyectil)
+# #     daño = proyectil.daño
+# #     enemigo.sufriDanio(FixNum.new(daño))
+# #     FixNum.new(daño)
+# #   end
+# #
+# #   def sufriDanio(n)
+# #     @vida = @vida-n.num
+# #   end
+# # end
 
-# class Sabalero
-#
-#   pre { vino_en_sangre < 1500 }
-#   def otraCosa
-#     puts "me estoy redefiniendo sabale"
-#   end
-#   def convidar_de_la_jarra(otro)
-#     otro.vino_en_sangre += 1
-#     @cantidad_de_sabalamigos += 1
-#   end
-# end
-#
-# #saba.vino_en_sangre= 1400
-#
-# saba.otraCosa
-#
-# print saba.vino_en_sangre
-#
-# # saba.convidar_de_la_jarra(lero)
 
+
+# unTanque = Tanque.new
+# otroTanque = Tanque.new
+# unEdificio = Edificio.new
 #
+# unTanque.atacarEdificio(unEdificio, Misil.new) # OK
+# puts "venimos bien"
+# #unTanque.atacarEdificio(otroTanque, Misil.new) # Error!
 #
-# operaciones = Class.new do
-#   #precondición de dividir
-#   pre { divisor != 0 }
-#   #postcondición de dividir
-#   post { |result| result * divisor == dividendo }
-#   def dividir(dividendo, divisor)
-#     dividendo / divisor
-#   end
-#
-#   # este método no se ve afectado por ninguna pre/post condición
-#   def restar(minuendo, sustraendo)
-#     minuendo - sustraendo
-#   end
-# end
-#
-# puts operaciones.new.dividir(10,0)
+# puts unEdificio.vida

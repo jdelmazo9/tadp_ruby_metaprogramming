@@ -194,3 +194,78 @@ describe 'OperacionesTest' do
     expect{operaciones.new().dividir_con_post_falopa(4, 2)}.to raise_error(ConditionError)
   end
 end
+
+
+# CREO LOS TEST CON LAS CLASES DIRECTAMENTE A DIFERENCIA DE LOS OTROS TEST YA QUE PARA EVALUAR NECESITO LAS CLASES NOMBRADAS
+describe 'EdificiosYTanquesTest' do
+  class Misil
+    attr_accessor :daño
+
+    def initialize
+      @daño = 10
+    end
+  end
+
+  class FixNum
+    attr_accessor :num
+    def initialize(value)
+      @num = value
+    end
+  end
+
+  class Edificio
+
+    attr_accessor :vida
+
+    def initialize
+      @vida = 1000
+    end
+
+    def sufriDanio(n)
+      @vida -= n.num
+    end
+  end
+
+  class Tanque
+
+    attr_accessor :vida
+
+    def initialize
+      @vida = 100
+    end
+
+
+    typed({enemigo: Edificio, proyectil: Misil}, FixNum)
+    def atacarEdificio(enemigo, proyectil)
+      daño = proyectil.daño
+      enemigo.sufriDanio(FixNum.new(daño))
+      FixNum.new(daño)
+    end
+
+    typed({enemigo: Edificio, proyectil: Misil}, FixNum)
+    def atacarEdificio2(enemigo, proyectil)
+      daño = proyectil.daño
+      enemigo.sufriDanio(FixNum.new(daño))
+      daño
+    end
+
+    def sufriDanio(n)
+      @vida = @vida-n.num
+    end
+  end
+
+  it 'se puede atacar a un edificio con un tanque' do
+    unEdificio = Edificio.new
+    Tanque.new.atacarEdificio(unEdificio, Misil.new)
+    expect( unEdificio.vida ).to be 990
+  end
+
+  it 'NO se puede atacar a un tanque con un tanque' do
+    expect { Tanque.new.atacarEdificio(Tanque.new, Misil.new) }.to raise_error(ConditionError)
+  end
+
+  it 'NO devuelve un tipo FixNum el retorno de atacarEdificio' do
+    expect { Tanque.new.atacarEdificio2(Edificio.new, Misil.new) }.to raise_error(ConditionError)
+  end
+
+end
