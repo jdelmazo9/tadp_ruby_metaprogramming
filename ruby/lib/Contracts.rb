@@ -5,7 +5,7 @@
 #     * ejecuto lo que vos querias
 #     * llamo a todos los after
 #
-class ChinchulinException < StandardError
+class BooleanException < StandardError
 end
 
 class ConditionError < StandardError
@@ -73,7 +73,7 @@ class Module
 
       result = method_parameters.execBlock(bloque, *ret)
 
-      raise ChinchulinException.new "no me hagas la tramposa que soy sabalero como vos, chinchulin" unless result.is_a? TrueClass or result.is_a? FalseClass
+      raise BooleanException.new "The result isn't boolean" unless result.is_a? TrueClass or result.is_a? FalseClass
       raise ConditionError.new error_message unless result
     end
   end
@@ -101,26 +101,26 @@ class Module
   def proc_for_invariant(bloque, error_message = "Condition is not verified")
     proc do
       result = instance_eval(&bloque)
-      raise ChinchulinException.new "no me hagas la tramposa que soy sabalero como vos, chinchulin" unless result.is_a? TrueClass or result.is_a? FalseClass
+      raise BooleanException.new "The result isn't boolean" unless result.is_a? TrueClass or result.is_a? FalseClass
       raise ConditionError.new error_message unless result
     end
   end
 
   private def invariant(&bloque)
     @after_blocks ||= []
-    @after_blocks << proc_for_invariant(bloque, "No pode dejar de ser sabalero papa. Y si no eras sabalero, que estas esperando?")
+    @after_blocks << proc_for_invariant(bloque, "Invariant error")
   end
 
   private def pre(&bloque)
-    @pre = proc_with_block_condition(bloque, "No cumple la sabalera precondicion")
+    @pre = proc_with_block_condition(bloque, "Precondition error")
   end
 
   private def post(&bloque)
-    @post = proc_with_block_condition(bloque, "No cumple la sabalera postcondicion")
+    @post = proc_with_block_condition(bloque, "Postcondition error")
   end
 
   private def typed(dicTypes, retType)
-    @typed = proc_with_typed_condition(dicTypes, retType, "No cumple los sabaleros dicTypes")
+    @typed = proc_with_typed_condition(dicTypes, retType, "dicType error")
   end
 
 
